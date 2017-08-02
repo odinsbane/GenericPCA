@@ -1,13 +1,7 @@
 package org.orangepalantir.genericpca;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -50,19 +44,6 @@ public class ShapeTest {
         new AnalysisDump(trainer).dump();
 
 
-    }
-
-    /**
-     * a + mag*b
-     * @param a
-     * @param b
-     * @param mag
-     * @return
-     */
-    static void add(double[] a, double magA,  double[] b, double magB, double[] target){
-        for(int i = 0; i<a.length; i++){
-            target[i] = a[i]*magA + b[i]*magB;
-        }
     }
 
     static void noise(double M, double[] start){
