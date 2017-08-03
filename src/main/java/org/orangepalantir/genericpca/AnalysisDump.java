@@ -72,21 +72,14 @@ public class AnalysisDump {
         for(int j = 0; j<vector.length; j++){
 
             double[] ev = trainer.getVector(j);
-            double[] v = new double[ev.length];
-
-            Trainer.add(vector, 1, ev, 1, v);
-
-            for(int i = 0; i<v.length/2; i++){
-                eigens.write(String.format("%f\t%f\t%f\t%f\t%f\t%f\n",
-                        vector[2*i],
-                        vector[2*i+1],ev[2*i],
-                        ev[2*i+1],
-                        v[2*i],
-                        v[2*i+1])
-                );
+            for(int i = 0; i<ev.length; i++){
+                eigens.write(String.format("%f", ev[i]));
+                if(i<ev.length-1){
+                    eigens.write('\t');
+                } else{
+                    eigens.write('\n');
+                }
             }
-            eigens.write("\n");
-
         }
 
         eigens.close();
