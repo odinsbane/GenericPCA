@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -39,7 +40,7 @@ public class SimpleReader {
 
             String newName = name.substring(0, j) + "-coef.txt";
             System.out.println(name + " analysis is written to: " + newName);
-            dumpCoefficients(trainer, samples, dir.resolve(newName));
+            bestCoefficients(trainer, samples, dir.resolve(newName));
 
 
         }
@@ -103,4 +104,40 @@ public class SimpleReader {
         }
 
     }
+
+    public static void bestCoefficients(Trainer trainer, List<double[]> samples, Path out){
+        try(BufferedWriter writer = Files.newBufferedWriter(out, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)){
+            double[] average = new double[samples.get(0).length];
+            for(double[] vector: samples) {
+                List<IndexedCoefficient> coefficients = trainer.getCoefficients(vector);
+
+                for (int k = 0; k < coefficients.size(); k++) {
+
+                    IndexedCoefficient ic = coefficients.get(coefficients.size() - k - 1);
+                    average[k] += ic.getCoefficient();
+                }
+
+                coefficients.sort(Comparator.comparingDouble(IndexedCoefficient::getMagnitude));
+                int tasl = coefficients.size() -1;
+                for(int i = 0; i<3; i++){
+                    IndexedCoefficient ic = coefficients.get(tasl - i);
+                    writer.write(String.format("%d\t%f\n", ic.i, ic.getCoefficient() ));
+                }
+                writer.write('\n');
+
+            }
+
+            /*
+            double n = samples.size();
+            for(int i = 0; i<average.length; i++){
+                writer.write(String.format("%d\t%f\n", i, average[i]/n));
+            }
+            writer.write('\n');
+            */
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
 }
