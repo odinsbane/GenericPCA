@@ -123,7 +123,7 @@ public class TwoDHeatMap {
     }
 
     public static void main(String[] args){
-        TwoDHeatMap map = new TwoDHeatMap(10, 10, 1);
+        TwoDHeatMap map = new TwoDHeatMap(10, 10, 2);
         FileDialog log = new FileDialog((JFrame)null, "Choose vector data");
         log.setMode(FileDialog.LOAD);
         log.setVisible(true);

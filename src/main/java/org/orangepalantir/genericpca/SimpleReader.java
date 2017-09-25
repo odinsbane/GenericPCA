@@ -21,6 +21,7 @@ import java.util.List;
  * Created on 8/2/17.
  */
 public class SimpleReader {
+    static double cutoff = 0.99;
     public static void main(String[] args) throws IOException {
         List<double[]> inputs =loadSampledData(Paths.get(args[0]));
         Trainer trainer = new Trainer(inputs);
@@ -111,18 +112,26 @@ public class SimpleReader {
             for(double[] vector: samples) {
                 List<IndexedCoefficient> coefficients = trainer.getCoefficients(vector);
 
+                double magnitude = 0;
                 for (int k = 0; k < coefficients.size(); k++) {
 
                     IndexedCoefficient ic = coefficients.get(coefficients.size() - k - 1);
                     average[k] += ic.getCoefficient();
+                    magnitude += ic.getMagnitude();
+
                 }
 
                 coefficients.sort(Comparator.comparingDouble(IndexedCoefficient::getMagnitude));
                 int tasl = coefficients.size() -1;
-                for(int i = 0; i<3; i++){
+                double cumulative = 0;
+                int used = 0;
+                for(int i = 0; cumulative<cutoff; i++){
                     IndexedCoefficient ic = coefficients.get(tasl - i);
+                    cumulative += ic.getMagnitude()/magnitude;
                     writer.write(String.format("%d\t%f\n", ic.i, ic.getCoefficient() ));
+                    used = i;
                 }
+                System.out.println(used + " to construct");
                 writer.write('\n');
 
             }
