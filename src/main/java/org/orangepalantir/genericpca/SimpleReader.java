@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Reads in a text file where each line represents a double[], trains and performs an analysis dump.
@@ -107,8 +108,9 @@ public class SimpleReader {
     }
 
     public static void bestCoefficients(Trainer trainer, List<double[]> samples, Path out){
+        double[] averageMagnitude = new double[samples.get(0).length];
+        double[] averageValue = new double[samples.get(0).length];
         try(BufferedWriter writer = Files.newBufferedWriter(out, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)){
-            double[] average = new double[samples.get(0).length];
             for(double[] vector: samples) {
                 List<IndexedCoefficient> coefficients = trainer.getCoefficients(vector);
 
@@ -116,37 +118,43 @@ public class SimpleReader {
                 for (int k = 0; k < coefficients.size(); k++) {
 
                     IndexedCoefficient ic = coefficients.get(coefficients.size() - k - 1);
-                    average[k] += ic.getCoefficient();
+
                     magnitude += ic.getMagnitude();
 
                 }
-
+                double rms = Math.sqrt(magnitude);
                 coefficients.sort(Comparator.comparingDouble(IndexedCoefficient::getMagnitude));
                 int tasl = coefficients.size() -1;
                 double cumulative = 0;
-                int used = 0;
-                for(int i = 0; cumulative<cutoff; i++){
+                for(int i = 0; i<coefficients.size(); i++){
                     IndexedCoefficient ic = coefficients.get(tasl - i);
                     cumulative += ic.getMagnitude()/magnitude;
-                    writer.write(String.format("%d\t%f\n", ic.i, ic.getCoefficient() ));
-                    used = i;
+                    if(cumulative<cutoff) {
+                        writer.write(String.format(Locale.US, "%d\t%f\n", ic.i, ic.getCoefficient()));
+                    }
+                    averageMagnitude[ic.i] += ic.getMagnitude()/magnitude;
+                    averageValue[ic.i] += ic.getCoefficient()/rms;
                 }
-                System.out.println(used + " to construct");
                 writer.write('\n');
 
             }
 
             /*
-            double n = samples.size();
-            for(int i = 0; i<average.length; i++){
-                writer.write(String.format("%d\t%f\n", i, average[i]/n));
-            }
-            writer.write('\n');
+
             */
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        Path cumu = out.getParent().resolve(out.getFileName().toString().replace("-coef.txt", "-coef-ave.txt"));
+        try(BufferedWriter writer = Files.newBufferedWriter(cumu, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            double n = samples.size();
+            for(int i = 0; i<averageMagnitude.length; i++){
+                writer.write(String.format(Locale.US, "%d\t%f\t%f\n", i, averageMagnitude[i]/n, averageValue[i]/n));
+            }
+            writer.write('\n');
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
