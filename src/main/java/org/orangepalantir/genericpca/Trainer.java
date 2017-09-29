@@ -5,6 +5,7 @@ import Jama.Matrix;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -50,6 +51,10 @@ public class Trainer {
         }
     }
 
+    public List<double[]> getEigenVectors(){
+        return Collections.unmodifiableList(eigenVectors);
+    }
+
     public double[][] getCovarianceMatrix(List<double[]> deltas){
         double[][] covariance = new double[N][N];
         for(double[] delta: deltas){
@@ -93,6 +98,8 @@ public class Trainer {
         for(int i = 0; i<average.length; i++) average[i] = average[i]*f;
 
     }
+
+
 
     List<IndexedCoefficient> getCoefficients(double[] vector){
         List<IndexedCoefficient> coefficients = new ArrayList<>(N);

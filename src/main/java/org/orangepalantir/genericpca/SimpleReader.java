@@ -24,7 +24,7 @@ import java.util.Locale;
 public class SimpleReader {
     static double cutoff = 0.99;
     public static void main(String[] args) throws IOException {
-        List<double[]> inputs =loadSampledData(Paths.get(args[0]));
+        List<double[]> inputs =loadData(Paths.get(args[0]));
         Trainer trainer = new Trainer(inputs);
         trainer.calculateEigenVectors();
         new AnalysisDump(trainer).dump();
@@ -34,7 +34,7 @@ public class SimpleReader {
 
         for(int i = 1; i<args.length; i++){
             Path path = Paths.get(args[i]).toAbsolutePath();
-            List<double[]> samples = loadSampledData(path);
+            List<double[]> samples = loadData(path);
             Path dir = path.getParent();
             String name = path.getFileName().toString();
             int j = name.lastIndexOf('.');
