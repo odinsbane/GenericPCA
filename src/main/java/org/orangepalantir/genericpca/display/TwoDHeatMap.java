@@ -33,8 +33,8 @@ import java.util.stream.Collectors;
 public class TwoDHeatMap {
     int width;
     int height;
-    int xsize = 10;
-    int ysize = 10;
+    int xsize = 2;
+    int ysize = 2;
     public TwoDHeatMap(int width, int height){
         this.width = width;
         this.height = height;
@@ -72,11 +72,8 @@ public class TwoDHeatMap {
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             frame.setVisible(true);
         });
-        Trainer train = new Trainer(values);
-        train.calculateEigenVectors();
-        List<BufferedImage> eigenImages = train.getEigenVectors().stream().map(this::createMap).collect(Collectors.toList());
-        List<BufferedImage> images = values.stream().map(this::createMap).collect(Collectors.toList());
 
+        List<BufferedImage> images = values.stream().map(this::createMap).collect(Collectors.toList());
         slider.addChangeListener(evt->{
             int i = slider.getValue();
             label.setIcon(new ImageIcon(images.get(i)));
@@ -84,6 +81,13 @@ public class TwoDHeatMap {
         });
 
         slider.setValue(0);
+
+        System.out.println("training");
+        Trainer train = new Trainer(values);
+        train.calculateEigenVectors();
+        System.out.println("trained");
+        List<BufferedImage> eigenImages = train.getEigenVectors().stream().map(this::createMap).collect(Collectors.toList());
+
 
         eigenSlider.addChangeListener(evt->{
             int i = eigenSlider.getValue();
@@ -150,7 +154,7 @@ public class TwoDHeatMap {
 
     public static void main(String[] args){
 
-        TwoDHeatMap map = new TwoDHeatMap(10, 10);
+        TwoDHeatMap map = new TwoDHeatMap(32, 32);
         FileDialog log = new FileDialog((JFrame)null, "Choose vector data");
         log.setMode(FileDialog.LOAD);
         log.setVisible(true);
