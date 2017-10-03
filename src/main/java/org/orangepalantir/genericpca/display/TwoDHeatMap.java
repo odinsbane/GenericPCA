@@ -33,8 +33,8 @@ import java.util.stream.Collectors;
 public class TwoDHeatMap {
     int width;
     int height;
-    int xsize = 4;
-    int ysize = 4;
+    int xsize = 2;
+    int ysize = 2;
     public TwoDHeatMap(int width, int height){
         this.width = width;
         this.height = height;
@@ -73,8 +73,6 @@ public class TwoDHeatMap {
             frame.setVisible(true);
         });
 
-        System.out.println(values.size());
-
         List<BufferedImage> images = values.stream().map(this::createMap).collect(Collectors.toList());
         slider.addChangeListener(evt->{
             int i = slider.getValue();
@@ -87,7 +85,6 @@ public class TwoDHeatMap {
         System.out.println("training");
         Trainer train = new Trainer(values);
         train.calculateEigenVectors();
-        System.out.println("creatingin images");
         List<BufferedImage> eigenImages = train.getEigenVectors().stream().map(this::createMap).collect(Collectors.toList());
 
 
@@ -156,7 +153,7 @@ public class TwoDHeatMap {
 
     public static void main(String[] args){
 
-        TwoDHeatMap map = new TwoDHeatMap(64, 64);
+        TwoDHeatMap map = new TwoDHeatMap(32, 32);
         FileDialog log = new FileDialog((JFrame)null, "Choose vector data");
         log.setMode(FileDialog.LOAD);
         log.setVisible(true);
