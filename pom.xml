@@ -38,16 +38,22 @@
         </developer>
     </developers>
     <scm>
-        <connection>scm:git:git://github.com/odinsbane/least-squares-in-java</connection>
-        <developerConnection>scm:git:git@github.com/odinsbane/least-squares-in-java</developerConnection>
+        <connection>scm:git:git://github.com/odinsbane/genericpca</connection>
+        <developerConnection>scm:git:git@github.com/odinsbane/genericpca</developerConnection>
         <tag>HEAD</tag>
-        <url>https://github.com/odinsbane/least-squares-in-java</url>
+        <url>https://github.com/odinsbane/genericpca</url>
     </scm>
 	<dependencies>
 		<dependency>
 			<groupId>gov.nist.math</groupId>
 			<artifactId>jama</artifactId>
 			<version>1.0.3</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.orangepalantir</groupId>
+			<artifactId>light-weight-graphing</artifactId>
+			<version>1.0</version>
 			<scope>compile</scope>
 		</dependency>
 	</dependencies>
@@ -60,8 +66,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.5.1</version>
 				<configuration>
-					<source>1.6</source>
-					<target>1.6</target>
+					<source>1.8</source>
+					<target>1.8</target>
 					<showDeprecation>true</showDeprecation>
 					<showWarnings>true</showWarnings>
 				</configuration>
