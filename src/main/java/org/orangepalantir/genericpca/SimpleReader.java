@@ -22,7 +22,7 @@ import java.util.Locale;
  * Created on 8/2/17.
  */
 public class SimpleReader {
-    static double cutoff = 1.0;
+    static double cutoff = 0.85;
     public static void main(String[] args) throws IOException {
         List<double[]> inputs =loadData(Paths.get(args[0]));
         Trainer trainer = new Trainer(inputs);

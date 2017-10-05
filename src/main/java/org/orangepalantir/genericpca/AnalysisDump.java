@@ -42,7 +42,7 @@ public class AnalysisDump {
 
             for(int k = 0; k<coefficients.size(); k++){
                 IndexedCoefficient ic = coefficients.get(coefficients.size() - k - 1);
-                constants.write(String.format("%d\t%f\n", ic.i, ic.getCoefficient()));
+                constants.write(String.format("%d\t%s\n", ic.i, Double.toHexString(ic.getCoefficient())));
             }
 
             coefficients.sort(Comparator.comparingDouble(IndexedCoefficient::getMagnitude));
