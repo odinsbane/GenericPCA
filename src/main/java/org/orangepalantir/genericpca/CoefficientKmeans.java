@@ -11,19 +11,24 @@ import java.awt.Dimension;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * Created by msmith on 04.10.17.
  */
 public class CoefficientKmeans {
     List<List<IndexedCoefficient>> coefficients;
-    int ks = 3;
+    int ks = 4;
     int levels = 10;
-    List<String> labels;
+    List<Path> labels;
 
     public void setInput(List<List<IndexedCoefficient>> input){
         List<List<IndexedCoefficient>> replacement = new ArrayList<>(input.size());
@@ -42,13 +47,13 @@ public class CoefficientKmeans {
 
 
         List<List<double[]>> partitions = new ArrayList<>();
-        List<List<String>> partyLabels = new ArrayList<>();
+        List<Map<Path, AtomicInteger>> partyLabels = new ArrayList<>();
 
         for(int n = 0; n<ks; n++){
             for(int m = 0; m<ks; m++){
                 partitions.add(new ArrayList<>());
                 if(labels!=null){
-                    partyLabels.add(new ArrayList<>());
+                    partyLabels.add(new HashMap<>());
                 }
             }
         }
@@ -74,7 +79,7 @@ public class CoefficientKmeans {
             }
             partitions.get(n*ks + m).add(new double[]{v, u});
             if(labels!=null){
-                partyLabels.get(n*ks + m).add(labels.get(dex));
+                partyLabels.get(n*ks + m).computeIfAbsent(labels.get(dex).getParent(), a->new AtomicInteger(0)).getAndIncrement();
             }
             dex++;
         }
@@ -162,24 +167,32 @@ public class CoefficientKmeans {
         return updated;
     }
 
-    public void showLabels(int ii, int j, List<List<String>> labelParty) throws IOException {
+    public void showLabels(int ii, int j, List<Map<Path, AtomicInteger>> labelParty) throws IOException {
         String title = String.format("Separated on index %d and index %d", ii, j);
         JFrame frame = new JFrame(title);
 
         StringBuffer buffer = new StringBuffer();
 
         int max = 0;
-        for(List<String> labels: labelParty){
+        List<List<Map.Entry<Path, AtomicInteger>>> party = new ArrayList<>();
+        for(Map<Path, AtomicInteger> labels: labelParty){
+            ArrayList<Map.Entry<Path, AtomicInteger>> entries = new ArrayList<>();
+            for(Map.Entry<Path, AtomicInteger> entry: labels.entrySet()){
+                entries.add(entry);
+            }
+
+            party.add(entries);
             int s = labels.size();
             max = s>max?s:max;
         }
 
         for(int i = 0; i<max; i++){
 
-            for(List<String> labels: labelParty){
+            for(List<Map.Entry<Path, AtomicInteger>> labels: party){
 
                 if(i<labels.size()){
-                    buffer.append(labels.get(i));
+                    Map.Entry<Path, AtomicInteger> entry = labels.get(i);
+                    buffer.append(entry.getValue() + ":" + entry.getKey());
                 }
                 buffer.append("\t");
 
@@ -209,8 +222,10 @@ public class CoefficientKmeans {
     }
 
     public void setLabels(List<String> labels){
-        this.labels = labels;
+        this.labels = labels.stream().map(Paths::get).collect(Collectors.toList());
+
     }
+
     public static void main(String[] args) throws IOException {
         List<List<IndexedCoefficient>> coefficients = IndexedCoefficient.readCoefficients(Paths.get(args[0]));
         CoefficientKmeans kmeans = new CoefficientKmeans();
@@ -219,6 +234,9 @@ public class CoefficientKmeans {
             List<String> labels = Files.readAllLines(Paths.get(args[1]));
             kmeans.setLabels(labels);
         }
-        kmeans.plot(1000, 1001);
+        kmeans.plot(1020, 1020);
+        kmeans.plot(1019, 1019);
+        kmeans.plot(1015, 1015);
+        kmeans.plot(1015, 1019);
     }
 }
