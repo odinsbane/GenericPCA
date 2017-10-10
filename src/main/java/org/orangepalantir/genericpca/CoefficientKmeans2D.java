@@ -24,10 +24,10 @@ import java.util.stream.Collectors;
 /**
  * Created by msmith on 04.10.17.
  */
-public class CoefficientKmeans {
+public class CoefficientKmeans2D {
     List<List<IndexedCoefficient>> coefficients;
     int ks = 4;
-    int levels = 10;
+    int levels = 100;
     List<Path> labels;
 
     public void setInput(List<List<IndexedCoefficient>> input){
@@ -40,48 +40,67 @@ public class CoefficientKmeans {
         coefficients = replacement;
     }
 
+    static double difference(double[] a, double[] b){
+        double sum = 0;
+        for(int i = 0; i<a.length; i++){
+            sum += (a[i] - b[i])*(a[i] - b[i]);
+        }
+        return Math.sqrt(sum);
+    }
+
     public void plot(int i, int j) throws IOException {
-        double[] ibounds = getBounds(i);
-        double[] jbounds = getBounds(j);
 
+        double[] data = new double[2*coefficients.size()];
+        for(int k = 0; k<coefficients.size(); k++){
+            data[2*k] = coefficients.get(k).get(i).getCoefficient();
+            data[2*k+1] = coefficients.get(k).get(j).getCoefficient();
+        }
 
+        double[] means = getInitialMean(i, j);
+        double[] umeans = getMeans(means, data);
+        double diff = difference(means, umeans);
+        means = umeans;
+        for(int k = 0; k<levels; k++){
+            umeans = getMeans(means, data);
+            double delta = difference(means, umeans);
+            means = umeans;
+            if(delta/diff < 1e-8) break;
+        }
 
         List<List<double[]>> partitions = new ArrayList<>();
         List<Map<Path, AtomicInteger>> partyLabels = new ArrayList<>();
 
         for(int n = 0; n<ks; n++){
-            for(int m = 0; m<ks; m++){
-                partitions.add(new ArrayList<>());
-                if(labels!=null){
-                    partyLabels.add(new HashMap<>());
-                }
+            partitions.add(new ArrayList<>());
+            if(labels!=null){
+                partyLabels.add(new HashMap<>());
             }
         }
-
-        int dex = 0;
+        int coefficientIndex = 0;
         for(List<IndexedCoefficient> shape: coefficients){
 
-            int n,m;
+            double vx = shape.get(i).getCoefficient();
+            double vy = shape.get(j).getCoefficient();
+            Double min = Double.MAX_VALUE;
+            int dex = 0;
+            for(int s = 0; s<ks; s++){
+                double mx = means[2*s];
+                double my = means[2*s + 1];
 
+                double d = (vx - mx)*(vx -mx) + (vy - my)*(vy - my);
 
-            double v = shape.get(i).getCoefficient();
-            for(n = 0; n<ks-1; n++){
-                if(v<ibounds[n]){
-                    break;
+                if(d<min){
+                    dex = s;
+                    min = d;
                 }
+
             }
 
-            double u = shape.get(j).getCoefficient();
-            for(m = 0; m<ks-1; m++){
-                if(u<jbounds[m]){
-                    break;
-                }
-            }
-            partitions.get(n*ks + m).add(new double[]{v, u});
+            partitions.get(dex).add(new double[]{vx, vy});
             if(labels!=null){
-                partyLabels.get(n*ks + m).computeIfAbsent(labels.get(dex).getParent(), a->new AtomicInteger(0)).getAndIncrement();
+                partyLabels.get(dex).computeIfAbsent(labels.get(coefficientIndex).getParent(), a->new AtomicInteger(0)).getAndIncrement();
             }
-            dex++;
+            coefficientIndex++;
         }
 
         Graph graph = new Graph();
@@ -102,7 +121,7 @@ public class CoefficientKmeans {
 
 
         }
-        graph.setTitle(String.format("Separated on index %d and index %d", i, j));
+        graph.setTitle(String.format("Separated on index %d and index %d; levels: %d", i, j, levels));
         graph.show(true);
         if(labels!=null){
             showLabels(i, j, partyLabels);
@@ -110,66 +129,85 @@ public class CoefficientKmeans {
     }
 
     /**
-     * Gets an auto-generated boundary for the provided coefficient.
-     * @param i
+     * Gets an auto-generated means for the provided coefficient. Assuming coefficients can be positive
+     * or negative
+     * @param i, j
      * @return
      */
-    double[] getBounds(int i){
-        double[] values = new double[coefficients.size()];
-        double min = Double.MAX_VALUE;
-        double max = -min;
-        int j = 0;
+    double[] getInitialMean(int i, int j){
+        double minx = Double.MAX_VALUE;
+        double miny = Double.MAX_VALUE;
+
+        double maxx = -minx;
+        double maxy = -miny;
+        int k  = 0;
         for(List<IndexedCoefficient> shape: coefficients){
-            double v = shape.get(i).getCoefficient();
-            values[j] = v;
-            min = v<min?v:min;
-            max = v>max?v:max;
-            j++;
-        }
-        double[] boundary = new double[ks-1];
-        double delta = (max - min )/ks;
-
-        for(j = 0; j<ks-1; j++){
-            boundary[j] = min + (j+1)*delta;
+            double vx = shape.get(i).getCoefficient();
+            double vy = shape.get(j).getCoefficient();
+            minx = vx<minx?vx:minx;
+            maxx = vx>maxx?vx:maxx;
+            miny = vy<miny?vy:miny;
+            maxy = vy>maxy?vy:maxy;
+            k++;
         }
 
-        for(j = 0; j<levels; j++){
-            double[] means = getMeans(boundary, values);
-            boundary = getBoundary(means);
+        double deltax = (maxx - minx );
+        double deltay = (maxy - miny);
+
+        double dtheta = Math.PI*2/ks;
+        double theta0 = deltax>deltay?Math.PI*0.5:0;
+        double[] initial = new double[ks*2];
+        for(k = 0; k<ks; k++){
+            double sin = Math.sin(dtheta*k + theta0);
+            double cos = Math.sin(dtheta*k + theta0);
+            initial[k*2] = minx + deltax*sin;
+            initial[k*2+1] = miny + deltay*cos;
+
         }
 
-        return boundary;
+
+        return initial;
     }
 
-    double[] getMeans(double[] boundary, double[] data){
+    double[] getMeans(double[] oldmeans, double[] data){
 
-        double[] updated = new double[ks];
+        double[] updated = new double[ks*2];
         double[] counts = new double[ks];
-        pixel:
-        for(int i = 0; i<data.length; i++){
-            double v = data[i];
-            for(int j = 0; j<boundary.length; j++){
-                if(v<=boundary[j]){
-                    updated[j]+=v;
-                    counts[j]++;
-                    continue pixel;
+        for(int i = 0; i<data.length/2; i++){
+            double vx = data[2*i];
+            double vy = data[2*i + 1];
+
+            double min = Double.MAX_VALUE;
+            int dex = -1;
+            for(int j = 0; j<ks; j++){
+                double mx = oldmeans[2*j];
+                double my = oldmeans[2*j + 1];
+
+                double d = (vx - mx)*(vx -mx) + (vy - my)*(vy - my);
+
+                if(d<min){
+                    dex = j;
+                    min = d;
                 }
+
             }
-            updated[ks-1]+=v;
-            counts[ks-1]++;
+            updated[dex*2] += vx;
+            updated[dex*2 + 1] += vy;
+            counts[dex]++;
         }
 
         for(int i = 0; i<ks; i++){
             double c = counts[i];
             if(c>0){
-                updated[i] /= c;
+                updated[2*i] /= c;
+                updated[2*i+1] /= c;
             }
         }
         return updated;
     }
 
     public void showLabels(int ii, int j, List<Map<Path, AtomicInteger>> labelParty) throws IOException {
-        String title = String.format("Separated on index %d and index %d", ii, j);
+        String title = String.format("2D index %d and index %d levels=%d", ii, j, levels);
         JFrame frame = new JFrame(title);
 
         StringBuffer buffer = new StringBuffer();
@@ -210,17 +248,11 @@ public class CoefficientKmeans {
         frame.setVisible(true);
         List<String> wrap = new ArrayList<>();
         wrap.add(buffer.toString());
-        Files.write(Paths.get(String.format("i%d-j%d.txt", ii, j)), wrap, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+        Files.write(Paths.get(String.format("d2_i%d-j%d.txt", ii, j)), wrap, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
 
     }
 
-    double[] getBoundary(double[] means){
-        double[] bounds = new double[means.length-1];
-        for(int i = 0; i<bounds.length; i++){
-            bounds[i] = 0.5*(means[i] + means[i+1]);
-        }
-        return bounds;
-    }
+
 
     public void setLabels(List<String> labels){
         this.labels = labels.stream().map(Paths::get).collect(Collectors.toList());
@@ -229,15 +261,19 @@ public class CoefficientKmeans {
 
     public static void main(String[] args) throws IOException {
         List<List<IndexedCoefficient>> coefficients = IndexedCoefficient.readCoefficients(Paths.get(args[0]));
-        CoefficientKmeans kmeans = new CoefficientKmeans();
+        CoefficientKmeans2D kmeans = new CoefficientKmeans2D();
         kmeans.setInput(coefficients);
+
         if(args.length>=2) {
             List<String> labels = Files.readAllLines(Paths.get(args[1]));
             kmeans.setLabels(labels);
         }
-        kmeans.plot(1023, 0);
-        kmeans.plot(1022, 1021);
-        kmeans.plot(1020, 1019);
-        kmeans.plot(1017, 1018);
+
+        for(int i = 2; i<8; i++){
+            kmeans.ks = i;
+            kmeans.plot(1018, 1019);
+        }
+
+
     }
 }

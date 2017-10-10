@@ -33,7 +33,6 @@ public class CoefficientCorrelations {
         int top = coefficients.get(0).length-1;
 
         for(double[] set: coefficients){
-            System.out.println(set.length);
             for(int i = 0; i<terms; i++){
                 int dex = top-i;
                 aves[i] += set[dex];
@@ -89,6 +88,6 @@ public class CoefficientCorrelations {
 
         CoefficientCorrelations cc = new CoefficientCorrelations();
         cc.setInput(coefficients);
-        cc.showCorrelations(100);
+        cc.showCorrelations(1023);
     }
 }
