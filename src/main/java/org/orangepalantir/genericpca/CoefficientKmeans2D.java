@@ -271,7 +271,7 @@ public class CoefficientKmeans2D {
 
         for(int i = 2; i<8; i++){
             kmeans.ks = i;
-            kmeans.plot(1018, 1019);
+            kmeans.plot(1015, 1015);
         }
 
 

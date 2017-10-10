@@ -353,13 +353,10 @@ public class CoefficientKmeansND {
             kmeans.setEigens(eigens);
         }
 
-        for(int i = 2; i<3; i++){
+        for(int i = 3; i<4; i++){
             kmeans.ks = i;
             kmeans.plot(new int[]{
-                    1023, 1022, 1021, 1020, 1019, 1018,
-                    1017, 1016, 1015, 1014,1013, 1012,
-                    1011, 1010, 1009, 1008, 1007, 1006,
-                    1005, 1004, 1003, 1002, 1001, 1000});
+                    1023, 1022});
         }
 
 
