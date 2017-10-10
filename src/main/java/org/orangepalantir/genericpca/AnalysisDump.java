@@ -73,7 +73,7 @@ public class AnalysisDump {
 
             double[] ev = trainer.getVector(j);
             for(int i = 0; i<ev.length; i++){
-                eigens.write(String.format("%f", ev[i]));
+                eigens.write(Double.toHexString(ev[i]));
                 if(i<ev.length-1){
                     eigens.write('\t');
                 } else{

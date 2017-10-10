@@ -95,7 +95,12 @@ public class TwoDHeatMap {
         });
         eigenSlider.setValue(0);
     }
+
     public BufferedImage createMap(double[] values){
+        return createMap(width, height, xsize, ysize, values);
+    }
+
+    static public BufferedImage createMap(int width, int height, int xsize, int ysize, double[] values){
         double min = Double.MAX_VALUE;
         double max = -Double.MAX_VALUE;
 
