@@ -88,6 +88,6 @@ public class CoefficientCorrelations {
 
         CoefficientCorrelations cc = new CoefficientCorrelations();
         cc.setInput(coefficients);
-        cc.showCorrelations(1023);
+        cc.showCorrelations(255);
     }
 }

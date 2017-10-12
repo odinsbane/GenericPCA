@@ -9,6 +9,7 @@ import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -38,7 +39,7 @@ public class CoefficientKmeansND {
         List<List<IndexedCoefficient>> replacement = new ArrayList<>(input.size());
         for(List<IndexedCoefficient> shape: input){
             List<IndexedCoefficient> sorted = new ArrayList<>(shape);
-            sorted.sort((a,b)->Integer.compare(-a.i, -b.i));
+            sorted.sort((a,b)->Integer.compare(a.i, b.i));
             replacement.add(sorted);
         }
         coefficients = replacement;
@@ -52,14 +53,22 @@ public class CoefficientKmeansND {
         return Math.sqrt(sum);
     }
 
-    public double plot(int[] indexes) throws IOException {
-
+    public double plot(int[][] groups) throws IOException {
+        int[] indexes = new int[groups.length];
+        for(int i = 0; i<groups.length; i++){
+            indexes[i] = groups[i][0];
+        }
         int n = indexes.length;
         double[] data = new double[n*coefficients.size()];
         for(int k = 0; k<coefficients.size(); k++){
             List<IndexedCoefficient> shape = coefficients.get(k);
             for(int s = 0; s<n; s++){
-                data[n*k + s] = shape.get(indexes[s]).getCoefficient();
+                int[] group = groups[s];
+                for(int l = 0; l<group.length; l++){
+                    IndexedCoefficient ic = shape.get(group[l]);
+                    if(ic.i!=group[l]) throw new RuntimeException("coefficient does not correspond to index!");
+                    data[n*k + s] += shape.get(group[l]).getCoefficient();
+                }
             }
         }
 
@@ -90,7 +99,11 @@ public class CoefficientKmeansND {
         for(List<IndexedCoefficient> shape: coefficients){
             double[] vector = new double[indexes.length];
             for(int i = 0; i<n; i++){
-                vector[i] = shape.get(i).getCoefficient();
+                vector[i] = shape.get(indexes[i]).getCoefficient();
+                int[] group = groups[i];
+                for(int l = 0; l<group.length; l++){
+                    vector[i] += shape.get(group[l]).getCoefficient();
+                }
             }
 
             Double min = Double.MAX_VALUE;
@@ -122,7 +135,10 @@ public class CoefficientKmeansND {
 
         List<GraphPoints> gp = GraphPoints.getGraphPoints();
         for(List<double[]> part: partitions){
-            if(part.size()==0) continue;
+            if(part.size()==0){
+                count++;
+                continue;
+            }
             double[] x = new double[part.size()];
             double[] y = new double[part.size()];
             for(int o = 0; o<part.size(); o++){
@@ -132,12 +148,19 @@ public class CoefficientKmeansND {
             DataSet set = graph.addData(x, y);
             set.setLine(null);
             set.setPoints(gp.get(count%9 + 3));
-            set.setLabel(String.format("x dex: %d, y dex: %d", count/ks, count%ks));
+            set.setLabel(String.format("k: %d", count));
             count++;
 
 
         }
         if(highlights!=null){
+            Color[] colors = {
+                    Color.BLUE,
+                    Color.RED,
+                    Color.ORANGE,
+                    Color.DARK_GRAY
+            };
+            int counter = 0;
             for(Highlight high: highlights){
                 List<double[]> values = new ArrayList<>();
                 for(Path p: high.conditions){
@@ -153,7 +176,10 @@ public class CoefficientKmeansND {
                 }
                 DataSet set = graph.addData(x, y);
                 set.setLine(null);
-
+                set.setPoints(GraphPoints.crossX());
+                set.setColor(colors[counter]);
+                set.setPointWeight(2.0);
+                counter = (counter+1)%colors.length;
                 set.setLabel(high.label);
             }
         }
@@ -166,7 +192,7 @@ public class CoefficientKmeansND {
         graph.setTitle(builds.toString());
         graph.show(false);
         if(labels!=null){
-            showLabels(indexes, partyLabels);
+            showLabels(indexes, partyLabels, means);
         }
 
         if(eigenVectors!=null){
@@ -328,13 +354,18 @@ public class CoefficientKmeansND {
         this.highlights = highlights.stream().map(Highlight::new).collect(Collectors.toList());
     }
 
-    public void showLabels(int[] indexes, List<Map<Path, List<double[]>>> labelParty) throws IOException {
+    public void showLabels(int[] indexes, List<Map<Path, List<double[]>>> labelParty, double[] means) throws IOException {
         String title = String.format("Indexes: %s", Arrays.toString(indexes));
         JFrame frame = new JFrame(title);
 
         StringBuffer buffer = new StringBuffer();
 
         int max = 0;
+        int n = indexes.length;
+        for(int i = 0; i<ks; i++){
+            buffer.append("#");
+
+        }
         List<List<Map.Entry<Path, List<double[]>>>> party = new ArrayList<>();
         for(Map<Path, List<double[]>> labels: labelParty){
             ArrayList<Map.Entry<Path, List<double[]>>> entries = new ArrayList<>();
@@ -418,23 +449,16 @@ public class CoefficientKmeansND {
 
         double[] x = new double[10];
         double[] y = new double[10];
-        int[][] indexes = {
-                { 252, 251},
-                { 250, 249},
-                { 248, 247},
-                { 247, 246},
-                { 252, 246},
-                { 251, 247},
-                { 250, 247},
-                { 249, 246},
-                { 252, 249},
-                { 250, 248, 247, 246},
-        };
+
         for(int i = 0; i<10; i++){
+            int top = 3;
+            int[][] indexes = {
+                    { top},
+                    {top -3}
+            };
+            kmeans.ks = 1 + i;
 
-            kmeans.ks = 3;
-
-            double s = kmeans.plot(indexes[i]);
+            double s = kmeans.plot(indexes);
             x[i] = kmeans.ks;
             y[i] = s;
         }
@@ -491,7 +515,7 @@ public class CoefficientKmeansND {
         try {
             for(int i = 1; i<=5; i++){
                 kmeans.ks = i;
-                double sigma = kmeans.plot(new int[]{0, 1, 2});
+                double sigma = kmeans.plot(new int[][]{{0}, {1}, {2}});
                 x[i-1] = i;
                 y[i-1] = sigma;
             }
