@@ -18,11 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -36,6 +32,8 @@ public class CoefficientKmeansND {
     int levels = 1000;
     List<Path> labels;
     List<double[]> eigenVectors;
+    List<Highlight> highlights;
+
     public void setInput(List<List<IndexedCoefficient>> input){
         List<List<IndexedCoefficient>> replacement = new ArrayList<>(input.size());
         for(List<IndexedCoefficient> shape: input){
@@ -54,7 +52,7 @@ public class CoefficientKmeansND {
         return Math.sqrt(sum);
     }
 
-    public void plot(int[] indexes) throws IOException {
+    public double plot(int[] indexes) throws IOException {
 
         int n = indexes.length;
         double[] data = new double[n*coefficients.size()];
@@ -79,7 +77,7 @@ public class CoefficientKmeansND {
         }
 
         List<List<double[]>> partitions = new ArrayList<>();
-        List<Map<Path, AtomicInteger>> partyLabels = new ArrayList<>();
+        List<Map<Path, List<double[]>>> partyLabels = new ArrayList<>();
 
         for(int i = 0; i<ks; i++){
             partitions.add(new ArrayList<>());
@@ -114,13 +112,14 @@ public class CoefficientKmeansND {
 
             partitions.get(dex).add(vector);
             if(labels!=null){
-                partyLabels.get(dex).computeIfAbsent(labels.get(coefficientIndex).getParent(), a->new AtomicInteger(0)).getAndIncrement();
+                partyLabels.get(dex).computeIfAbsent(labels.get(coefficientIndex).getParent(), a->new ArrayList<>()).add(vector);
             }
             coefficientIndex++;
         }
 
         Graph graph = new Graph();
         int count = 0;
+
         List<GraphPoints> gp = GraphPoints.getGraphPoints();
         for(List<double[]> part: partitions){
             if(part.size()==0) continue;
@@ -138,6 +137,26 @@ public class CoefficientKmeansND {
 
 
         }
+        if(highlights!=null){
+            for(Highlight high: highlights){
+                List<double[]> values = new ArrayList<>();
+                for(Path p: high.conditions){
+                    for(Map<Path, List<double[]>> map: partyLabels){
+                        values.addAll(map.getOrDefault(p, Collections.EMPTY_LIST));
+                    }
+                }
+                double[] x = new double[values.size()];
+                double[] y = new double[values.size()];
+                for(int i = 0; i<x.length; i++){
+                    x[i] = values.get(i)[0];
+                    y[i] = values.get(i)[1];
+                }
+                DataSet set = graph.addData(x, y);
+                set.setLine(null);
+
+                set.setLabel(high.label);
+            }
+        }
 
         StringBuilder builds = new StringBuilder("Separated on indexes");
         for(int index: indexes){
@@ -145,7 +164,7 @@ public class CoefficientKmeansND {
         }
 
         graph.setTitle(builds.toString());
-        graph.show(true);
+        graph.show(false);
         if(labels!=null){
             showLabels(indexes, partyLabels);
         }
@@ -153,6 +172,24 @@ public class CoefficientKmeansND {
         if(eigenVectors!=null){
             writeMeanShapes(indexes, means);
         }
+
+        return calculateVariation(means, partitions, n);
+    }
+
+    private double calculateVariation(double[] means, List<List<double[]>> partitions, int n) {
+        double sigma = 0;
+        for(int i = 0; i<ks; i++){
+            List<double[]> vectors = partitions.get(i);
+            for(double[] vector: vectors){
+
+                for(int j = 0; j<n; j++){
+                    double delta = vector[j] - means[i*n + j];
+                    sigma += delta*delta;
+                }
+
+            }
+        }
+        return sigma;
     }
 
     void writeMeanShapes(int[] indexes, double[] means){
@@ -274,18 +311,34 @@ public class CoefficientKmeansND {
         }
         return updated;
     }
+    static class Highlight{
+        String label;
+        List<Path> conditions;
+        public Highlight(String all){
+            String[] tokens = all.split(Pattern.quote("\t"));
+            label = tokens[0];
+            conditions = new ArrayList<>();
+            for(int i = 1; i<tokens.length; i++){
+                conditions.add(Paths.get(tokens[i]));
+            }
+        }
+    }
+    public void setHighlights(List<String> highlights){
+        System.out.println("working");
+        this.highlights = highlights.stream().map(Highlight::new).collect(Collectors.toList());
+    }
 
-    public void showLabels(int[] indexes, List<Map<Path, AtomicInteger>> labelParty) throws IOException {
+    public void showLabels(int[] indexes, List<Map<Path, List<double[]>>> labelParty) throws IOException {
         String title = String.format("Indexes: %s", Arrays.toString(indexes));
         JFrame frame = new JFrame(title);
 
         StringBuffer buffer = new StringBuffer();
 
         int max = 0;
-        List<List<Map.Entry<Path, AtomicInteger>>> party = new ArrayList<>();
-        for(Map<Path, AtomicInteger> labels: labelParty){
-            ArrayList<Map.Entry<Path, AtomicInteger>> entries = new ArrayList<>();
-            for(Map.Entry<Path, AtomicInteger> entry: labels.entrySet()){
+        List<List<Map.Entry<Path, List<double[]>>>> party = new ArrayList<>();
+        for(Map<Path, List<double[]>> labels: labelParty){
+            ArrayList<Map.Entry<Path, List<double[]>>> entries = new ArrayList<>();
+            for(Map.Entry<Path, List<double[]>> entry: labels.entrySet()){
                 entries.add(entry);
             }
 
@@ -296,11 +349,11 @@ public class CoefficientKmeansND {
 
         for(int i = 0; i<max; i++){
 
-            for(List<Map.Entry<Path, AtomicInteger>> labels: party){
+            for(List<Map.Entry<Path, List<double[]>>> labels: party){
 
                 if(i<labels.size()){
-                    Map.Entry<Path, AtomicInteger> entry = labels.get(i);
-                    buffer.append(entry.getValue() + ":" + entry.getKey());
+                    Map.Entry<Path, List<double[]>> entry = labels.get(i);
+                    buffer.append(entry.getValue().size() + ":" + entry.getKey());
                 }
                 buffer.append("\t");
 
@@ -340,6 +393,11 @@ public class CoefficientKmeansND {
     }
 
     public static void main(String[] args) throws IOException {
+        //testVersion();
+        loadDataAndRun(args);
+    }
+
+    public static void loadDataAndRun(String[] args) throws IOException {
         List<List<IndexedCoefficient>> coefficients = IndexedCoefficient.readCoefficients(Paths.get(args[0]));
         CoefficientKmeansND kmeans = new CoefficientKmeansND();
         kmeans.setInput(coefficients);
@@ -353,12 +411,94 @@ public class CoefficientKmeansND {
             kmeans.setEigens(eigens);
         }
 
-        for(int i = 3; i<4; i++){
-            kmeans.ks = i;
-            kmeans.plot(new int[]{
-                    1023, 1022});
+        if(args.length>=4){
+            List<String> highlights = Files.readAllLines(Paths.get(args[3]));
+            kmeans.setHighlights(highlights);
         }
 
+        double[] x = new double[10];
+        double[] y = new double[10];
+        int[][] indexes = {
+                { 252, 251},
+                { 250, 249},
+                { 248, 247},
+                { 247, 246},
+                { 252, 246},
+                { 251, 247},
+                { 250, 247},
+                { 249, 246},
+                { 252, 249},
+                { 250, 248, 247, 246},
+        };
+        for(int i = 0; i<10; i++){
+
+            kmeans.ks = 3;
+
+            double s = kmeans.plot(indexes[i]);
+            x[i] = kmeans.ks;
+            y[i] = s;
+        }
+
+        new Graph(x, y).show(true, "variance");
+    }
+
+    public static void testVersion(){
+
+        double[] v1 = {5*Math.sqrt(2)/2, 5*Math.sqrt(2)/2, 0};
+        double[] v2 = {-3*Math.sqrt(2)/2, 3*Math.sqrt(2)/2, 0};
+        double[] v3 = {1, 0, 3};
+        List<List<IndexedCoefficient>> data = new ArrayList<>(300);
+        List<String> labels = new ArrayList<>(300);
+        Random ng = new Random();
+
+        double noise = 1.0;
+
+        for(int i = 0; i<100; i++){
+            List<IndexedCoefficient> shape = new ArrayList<>(2);
+            for(int j = 0; j<3; j++){
+                IndexedCoefficient ic =new IndexedCoefficient(j, v1[j] + ng.nextGaussian()*noise);
+                shape.add(ic);
+            }
+            labels.add("one/d.txt");
+            data.add(shape);
+        }
+
+        for(int i = 0; i<100; i++){
+            List<IndexedCoefficient> shape = new ArrayList<>(2);
+            for(int j = 0; j<3; j++){
+                IndexedCoefficient ic =new IndexedCoefficient(j, v2[j] + ng.nextGaussian()*noise);
+                shape.add(ic);
+            }
+            labels.add("two/d.txt");
+            data.add(shape);
+        }
+
+        for(int i = 0; i<100; i++){
+            List<IndexedCoefficient> shape = new ArrayList<>(2);
+            for(int j = 0; j<3; j++){
+                IndexedCoefficient ic =new IndexedCoefficient(j, v3[j] + ng.nextGaussian()*noise);
+                shape.add(ic);
+            }
+            labels.add("three/d.txt");
+            data.add(shape);
+        }
+
+        CoefficientKmeansND kmeans = new CoefficientKmeansND();
+        kmeans.setInput(data);
+        kmeans.setLabels(labels);
+        double[] x = new double[5];
+        double[] y = new double[5];
+        try {
+            for(int i = 1; i<=5; i++){
+                kmeans.ks = i;
+                double sigma = kmeans.plot(new int[]{0, 1, 2});
+                x[i-1] = i;
+                y[i-1] = sigma;
+            }
+            new Graph(x, y).show(true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 }
