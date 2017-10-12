@@ -363,8 +363,11 @@ public class CoefficientKmeansND {
         int max = 0;
         int n = indexes.length;
         for(int i = 0; i<ks; i++){
-            buffer.append("#");
-
+            buffer.append("#k" + i);
+            for(int j = 0; j<n; j++){
+                buffer.append(String.format("\t%f", means[i*n + j]));
+            }
+            buffer.append("\n");
         }
         List<List<Map.Entry<Path, List<double[]>>>> party = new ArrayList<>();
         for(Map<Path, List<double[]>> labels: labelParty){
@@ -451,13 +454,13 @@ public class CoefficientKmeansND {
         double[] y = new double[10];
 
         for(int i = 0; i<10; i++){
-            int top = 3;
+            int top = 255-2*i;
             int[][] indexes = {
                     { top},
-                    {top -3}
+                    {top - 1}
             };
-            kmeans.ks = 1 + i;
-
+            kmeans.ks = 3;
+            //241 & 240 ntc separates.
             double s = kmeans.plot(indexes);
             x[i] = kmeans.ks;
             y[i] = s;

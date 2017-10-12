@@ -39,8 +39,49 @@ public class TwoDHeatMap {
         this.width = width;
         this.height = height;
     }
-    public void displayData(List<double[]> values){
 
+    public void guessDimensions(double[] data){
+        if(data.length == width*height) return;
+        int l = (int)Math.sqrt(data.length);
+
+        //square-able
+        if(l*l==data.length){
+            width = l;
+            height = l;
+            return;
+        }
+
+
+        if(width>0){
+            int h = data.length/width;
+            if(h*width==data.length){
+                height = h;
+                return;
+            }
+        }
+
+        if(height>0){
+            int w = data.length/height;
+            if(w*height==data.length){
+                width = w;
+                return;
+            }
+        }
+
+        int max = data.length/2;
+        int best = 1;
+        for(int i = 2; i<max; i++){
+            if(data.length%i==0){
+                best = i;
+                max = data.length/best;
+            }
+        }
+        width = best;
+        height = data.length/best;
+    }
+
+    public void displayData(List<double[]> values){
+        guessDimensions(values.get(0));
         JFrame frame = new JFrame("components");
 
         JLabel label = new JLabel("waiting");
