@@ -33,8 +33,8 @@ import java.util.stream.Collectors;
 public class TwoDHeatMap {
     int width;
     int height;
-    int xsize = 2;
-    int ysize = 2;
+    int xsize = 10;
+    int ysize = 10;
     public TwoDHeatMap(int width, int height){
         this.width = width;
         this.height = height;

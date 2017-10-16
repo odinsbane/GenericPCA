@@ -218,9 +218,17 @@ public class CoefficientKmeansND {
         return sigma;
     }
 
+    /**
+     * Creates a mean shape based on the clustered coefficients.
+     *
+     * @param indexes
+     * @param means
+     * @param coefficients
+     */
     void writeMeanShapes(int[] indexes, double[] means){
         int space= eigenVectors.get(0).length;
         int width = (int)Math.sqrt(space);
+
 
         for(int j = 0; j<ks; j++){
             StringBuilder name = new StringBuilder("km");
@@ -252,6 +260,13 @@ public class CoefficientKmeansND {
         }
     }
 
+    /**
+     * Partition by means.
+     *
+     */
+    public List<List<List<IndexedCoefficient>>> partitionByMeans(int[] indexes, double[] means, List<List<IndexedCoefficient>> coefficients){
+        return null;
+    }
     /**
      * Gets an auto-generated means for the provided coefficient. Assuming coefficients can be positive
      * or negative
@@ -459,7 +474,7 @@ public class CoefficientKmeansND {
                     { top},
                     {top - 1}
             };
-            kmeans.ks = 3;
+            kmeans.ks = 6;
             //241 & 240 ntc separates.
             double s = kmeans.plot(indexes);
             x[i] = kmeans.ks;
