@@ -67,7 +67,7 @@ public class CoefficientKmeansND {
                 for(int l = 0; l<group.length; l++){
                     IndexedCoefficient ic = shape.get(group[l]);
                     if(ic.i!=group[l]) throw new RuntimeException("coefficient does not correspond to index!");
-                    data[n*k + s] += shape.get(group[l]).getCoefficient();
+                    data[n*k + s] += ic.getCoefficient();
                 }
             }
         }
@@ -82,8 +82,9 @@ public class CoefficientKmeansND {
             double delta = difference(means, umeans);
             System.out.println(delta);
             means = umeans;
-            if(delta/diff < 1e-8) break;
+            if(delta==0) break;
         }
+        umeans = getMeans(n, means, data);
 
         List<List<double[]>> partitions = new ArrayList<>();
         List<Map<Path, List<double[]>>> partyLabels = new ArrayList<>();
@@ -99,7 +100,6 @@ public class CoefficientKmeansND {
         for(List<IndexedCoefficient> shape: coefficients){
             double[] vector = new double[indexes.length];
             for(int i = 0; i<n; i++){
-                vector[i] = shape.get(indexes[i]).getCoefficient();
                 int[] group = groups[i];
                 for(int l = 0; l<group.length; l++){
                     vector[i] += shape.get(group[l]).getCoefficient();
@@ -134,6 +134,10 @@ public class CoefficientKmeansND {
         int count = 0;
 
         List<GraphPoints> gp = GraphPoints.getGraphPoints();
+        double xmin = Double.MAX_VALUE;
+        double ymin = Double.MAX_VALUE;
+        double xmax = -xmin;
+        double ymax = -ymin;
         for(List<double[]> part: partitions){
             if(part.size()==0){
                 count++;
@@ -146,6 +150,14 @@ public class CoefficientKmeansND {
                 y[o] = part.get(o)[1];
             }
             DataSet set = graph.addData(x, y);
+
+            double[] xrange = getAxisExtremes(x);
+            double[] yrange = getAxisExtremes(y);
+            xmin = xmin<xrange[0]?xmin:xrange[0];
+            xmax = xmax>xrange[1]?xmax:xrange[1];
+            ymin = ymin<yrange[0]?ymin:yrange[0];
+            ymax = ymax>yrange[1]?ymax:yrange[1];
+
             set.setLine(null);
             set.setPoints(gp.get(count%9 + 3));
             set.setLabel(String.format("k: %d", count));
@@ -153,6 +165,8 @@ public class CoefficientKmeansND {
 
 
         }
+        graph.setXRange(xmin, xmax);
+        graph.setYRange(ymin, ymax);
         if(highlights!=null){
             Color[] colors = {
                     Color.BLUE,
@@ -203,51 +217,101 @@ public class CoefficientKmeansND {
     }
 
     private double calculateVariation(double[] means, List<List<double[]>> partitions, int n) {
+        double[] single = new double[n];
+        double[] singleSqd = new double[n];
+        double counter = 0;
+        double massSigma = 0;
         double sigma = 0;
         for(int i = 0; i<ks; i++){
             List<double[]> vectors = partitions.get(i);
+
             for(double[] vector: vectors){
 
                 for(int j = 0; j<n; j++){
                     double delta = vector[j] - means[i*n + j];
                     sigma += delta*delta;
+                    single[j] += vector[j];
+                    singleSqd[j] += vector[j]*vector[j];
                 }
-
+                counter++;
             }
         }
-        return sigma;
-    }
+        sigma = sigma/counter;
 
+        for(int i = 0; i<n; i++){
+            double xbar = single[i]/counter;
+            massSigma += singleSqd[i]/counter - xbar*xbar;
+        }
+
+        return sigma/massSigma;
+    }
     /**
      * Creates a mean shape based on the clustered coefficients.
      *
      * @param indexes
      * @param means
-     * @param coefficients
      */
     void writeMeanShapes(int[] indexes, double[] means){
         int space= eigenVectors.get(0).length;
         int width = (int)Math.sqrt(space);
+        List<List<List<IndexedCoefficient>>> partitionedShapes = new ArrayList<>();
+        int n = indexes.length;
 
+        for(int i = 0; i<ks; i++){
+            partitionedShapes.add(new ArrayList<>());
+        }
 
+        for(List<IndexedCoefficient> shape: coefficients){
+
+            Double min = Double.MAX_VALUE;
+
+            int dex = 0;
+            for(int s = 0; s<ks; s++){
+                double d = 0;
+                for(int i = 0; i<n; i++){
+                    double v = (shape.get(indexes[i]).getCoefficient() - means[s*n + i]);
+                    d += v*v;
+                }
+
+                if(d<min){
+                    dex = s;
+                    min = d;
+                }
+
+            }
+
+            partitionedShapes.get(dex).add(shape);
+
+        }
         for(int j = 0; j<ks; j++){
             StringBuilder name = new StringBuilder("km");
-            name.append(j);
             name.append("_");
             for(int dex: indexes){
                 name.append(dex);
                 name.append("-");
             }
+            name.append(j);
             name.append("sum.png");
-            int n = indexes.length;
             double[] output = new double[space];
-            for(int i = 0; i<n; i++){
-                double[] ev = eigenVectors.get(indexes[i]);
-                double ai = means[j*n + i];
+            double[] a = new double[eigenVectors.size()];
+            List<List<IndexedCoefficient>> partition = partitionedShapes.get(j);
+            for(List<IndexedCoefficient> shape: partition){
+                for(int i = 0; i<a.length; i++){
+                    a[i] += shape.get(i).getCoefficient();
+                }
+            }
+            int count = partition.size();
+            for(int i = 0; i<a.length; i++){
+                a[i] = a[i]/count;
+            }
+            for(int i = 0; i<a.length; i++){
+                double[] ev = eigenVectors.get(i);
+                double ai = a[i];
                 for(int k = 0; k<space; k++){
                     output[k] += ev[k]*ai;
                 }
             }
+
             BufferedImage img = TwoDHeatMap.createMap(width, width, 10, 10, output);
 
             try {
@@ -298,10 +362,11 @@ public class CoefficientKmeansND {
         }
 
         double[] initial = new double[ks*n];
+        Random rand = new Random();
         for(int k = 0; k<ks; k++){
 
             for(int i = 0; i<n; i++){
-                initial[k*n + i] = mins[i] + Math.random()*delta[i];
+                initial[k*n + i] = mins[i] + rand.nextDouble()*delta[i];
             }
 
         }
@@ -434,7 +499,31 @@ public class CoefficientKmeansND {
             eigenVectors.add(values);
         }
     }
+    static public double[] getAxisExtremes(double[] data){
+        double sum = 0;
+        double sum2 = 0;
+        double min = Double.MAX_VALUE;
+        double max = -min;
+        for(double d: data){
+            sum += d;
+            sum2 += d*d;
+            min = d<min?d:min;
+            max = d>max?d:max;
 
+
+        }
+
+        double center = sum/data.length;
+        double stdev = Math.sqrt(sum2/data.length - center*center);
+        double top = center + 2*stdev;
+        top = top>max?max:top;
+        double bottom = center - 2*stdev;
+        bottom = bottom<min?min:bottom;
+
+        return new double[]{bottom, top};
+
+
+    }
 
     public void setLabels(List<String> labels){
         this.labels = labels.stream().map(Paths::get).collect(Collectors.toList());
@@ -465,16 +554,27 @@ public class CoefficientKmeansND {
             kmeans.setHighlights(highlights);
         }
 
-        double[] x = new double[10];
-        double[] y = new double[10];
 
-        for(int i = 0; i<10; i++){
-            int top = 255-2*i;
+        int total= 10;
+        int n = (total)*(total+1)/2;
+        int count = total;
+        int alt = total - 1;
+        int top = coefficients.get(0).size() - 1;
+        double[] x = new double[n];
+        double[] y = new double[n];
+
+        for(int i = 0; i<n; i++){
+
             int[][] indexes = {
-                    { top},
-                    {top - 1}
+                    { top - count},
+                    {top - alt}
             };
-            kmeans.ks = 6;
+            alt--;
+            if(alt<0){
+                count--;
+                alt = count - 1;
+            }
+            kmeans.ks = 5;
             //241 & 240 ntc separates.
             double s = kmeans.plot(indexes);
             x[i] = kmeans.ks;
