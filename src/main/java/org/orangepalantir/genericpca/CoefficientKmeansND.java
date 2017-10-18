@@ -562,7 +562,7 @@ public class CoefficientKmeansND {
         int top = coefficients.get(0).size() - 1;
         double[] x = new double[n];
         double[] y = new double[n];
-
+        n = 12;
         for(int i = 0; i<n; i++){
 
             int[][] indexes = {
