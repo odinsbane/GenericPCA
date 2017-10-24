@@ -53,6 +53,64 @@ public class CoefficientKmeansND {
         return Math.sqrt(sum);
     }
 
+    public double calculate(int[] indexes){
+        int n = indexes.length;
+        double[] data = new double[n*coefficients.size()];
+        for(int k = 0; k<coefficients.size(); k++){
+            List<IndexedCoefficient> shape = coefficients.get(k);
+            for(int s = 0; s<n; s++){
+                IndexedCoefficient ic = shape.get(indexes[s]);
+                if(ic.i!=indexes[s]) throw new RuntimeException("coefficient does not correspond to index!");
+                data[n*k + s] += ic.getCoefficient();
+            }
+        }
+
+        double[] means = getInitialMean(n, data);
+        double[] umeans = getMeans(n, means, data);
+        double diff = difference(means, umeans);
+        means = umeans;
+        for(int k = 0; k<levels; k++){
+            umeans = getMeans(n, means, data);
+            double delta = difference(means, umeans);
+            means = umeans;
+            if(delta==0) break;
+        }
+        umeans = getMeans(n, means, data);
+
+        List<List<double[]>> partitions = new ArrayList<>();
+
+        for(int i = 0; i<ks; i++){
+            partitions.add(new ArrayList<>());
+        }
+
+        for(List<IndexedCoefficient> shape: coefficients){
+            double[] vector = new double[indexes.length];
+            for(int i = 0; i<n; i++){
+                vector[i] += shape.get(indexes[i]).getCoefficient();
+            }
+
+            Double min = Double.MAX_VALUE;
+
+            int dex = 0;
+            for(int s = 0; s<ks; s++){
+                double d = 0;
+                for(int i = 0; i<n; i++){
+                    double v = (vector[i] - means[s*n + i]);
+                    d += v*v;
+                }
+
+                if(d<min){
+                    dex = s;
+                    min = d;
+                }
+
+            }
+
+            partitions.get(dex).add(vector);
+        }
+        return calculateVariation(means, partitions, n);
+    }
+
     public double plot(int[][] groups) throws IOException {
         int[] indexes = new int[groups.length];
         for(int i = 0; i<groups.length; i++){
@@ -555,26 +613,27 @@ public class CoefficientKmeansND {
         }
 
 
-        int total= 10;
-        int n = (total)*(total+1)/2;
+        int total= 3;
+        int n = 16;
         int count = total;
-        int alt = total - 1;
+        int alt = total;
         int top = coefficients.get(0).size() - 1;
         double[] x = new double[n];
         double[] y = new double[n];
-        n = 12;
         for(int i = 0; i<n; i++){
-
+            int prime = 9 + count;
+            int aux =  9 + alt;
             int[][] indexes = {
-                    { top - count},
-                    {top - alt}
+                    {aux},
+                    {prime}
+
             };
             alt--;
             if(alt<0){
                 count--;
-                alt = count - 1;
+                alt = total;
             }
-            kmeans.ks = 5;
+            kmeans.ks = 3;
             //241 & 240 ntc separates.
             double s = kmeans.plot(indexes);
             x[i] = kmeans.ks;
