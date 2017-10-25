@@ -38,7 +38,7 @@ public class ScanKmeans {
     }
 
     private void generateConditions(){
-        int total= 1023;
+        int total= 512;
         int count = total;
         int alt = total - 1;
         int small = alt - 1;

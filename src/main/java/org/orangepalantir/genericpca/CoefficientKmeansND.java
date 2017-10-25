@@ -28,7 +28,8 @@ import java.util.stream.Collectors;
  * Created by msmith on 04.10.17.
  */
 public class CoefficientKmeansND {
-    List<List<IndexedCoefficient>> coefficients;
+    List<List<IndexedCoefficient>> original;
+    List<List<IndexedCoefficient>> normalized;
     int ks = 4;
     int levels = 1000;
     List<Path> labels;
@@ -42,7 +43,8 @@ public class CoefficientKmeansND {
             sorted.sort((a,b)->Integer.compare(a.i, b.i));
             replacement.add(sorted);
         }
-        coefficients = replacement;
+        original = replacement;
+        normalized = normalizeCoefficients(replacement);
     }
 
     static double difference(double[] a, double[] b){
@@ -55,9 +57,9 @@ public class CoefficientKmeansND {
 
     public double calculate(int[] indexes){
         int n = indexes.length;
-        double[] data = new double[n*coefficients.size()];
-        for(int k = 0; k<coefficients.size(); k++){
-            List<IndexedCoefficient> shape = coefficients.get(k);
+        double[] data = new double[n*normalized.size()];
+        for(int k = 0; k<normalized.size(); k++){
+            List<IndexedCoefficient> shape = normalized.get(k);
             for(int s = 0; s<n; s++){
                 IndexedCoefficient ic = shape.get(indexes[s]);
                 if(ic.i!=indexes[s]) throw new RuntimeException("coefficient does not correspond to index!");
@@ -83,7 +85,7 @@ public class CoefficientKmeansND {
             partitions.add(new ArrayList<>());
         }
 
-        for(List<IndexedCoefficient> shape: coefficients){
+        for(List<IndexedCoefficient> shape: normalized){
             double[] vector = new double[indexes.length];
             for(int i = 0; i<n; i++){
                 vector[i] += shape.get(indexes[i]).getCoefficient();
@@ -110,23 +112,45 @@ public class CoefficientKmeansND {
         }
         return calculateVariation(means, partitions, n);
     }
-
-    public double plot(int[][] groups) throws IOException {
-        int[] indexes = new int[groups.length];
-        for(int i = 0; i<groups.length; i++){
-            indexes[i] = groups[i][0];
+    private List<List<IndexedCoefficient>> normalizeCoefficients(List<List<IndexedCoefficient>> co){
+        int cnets = co.get(0).size();
+        List<List<IndexedCoefficient>> normed = new ArrayList<>(co.size());
+        for(List<IndexedCoefficient> shape: co){
+            normed.add(new ArrayList<>());
         }
+        for(int index = 0; index< cnets; index++){
+            double min = Double.MAX_VALUE;
+            double max = -Double.MAX_VALUE;
+            for(List<IndexedCoefficient> shape: co){
+
+                double v = shape.get(index).getCoefficient();
+                min = v<min?v:min;
+                max = v>max?v:max;
+
+            }
+
+            for(int i = 0; i<co.size(); i++){
+                List<IndexedCoefficient> shape = co.get(i);
+                List<IndexedCoefficient> nShape = normed.get(i);
+                IndexedCoefficient ic = shape.get(index);
+                double v = ic.getCoefficient();
+                double scaled = 2*(v - min)/(max - min);
+                nShape.add(new IndexedCoefficient(ic.i, scaled));
+            }
+
+        }
+        return normed;
+    }
+
+    public double plot(int[] indexes) throws IOException {
         int n = indexes.length;
-        double[] data = new double[n*coefficients.size()];
-        for(int k = 0; k<coefficients.size(); k++){
-            List<IndexedCoefficient> shape = coefficients.get(k);
+        double[] data = new double[n*normalized.size()];
+        for(int k = 0; k<normalized.size(); k++){
+            List<IndexedCoefficient> shape = normalized.get(k);
             for(int s = 0; s<n; s++){
-                int[] group = groups[s];
-                for(int l = 0; l<group.length; l++){
-                    IndexedCoefficient ic = shape.get(group[l]);
-                    if(ic.i!=group[l]) throw new RuntimeException("coefficient does not correspond to index!");
-                    data[n*k + s] += ic.getCoefficient();
-                }
+                IndexedCoefficient ic = shape.get(indexes[s]);
+                if(ic.i!=indexes[s]) throw new RuntimeException("coefficient does not correspond to index!");
+                data[n*k + s] += ic.getCoefficient();
             }
         }
 
@@ -155,13 +179,10 @@ public class CoefficientKmeansND {
         }
         int coefficientIndex = 0;
 
-        for(List<IndexedCoefficient> shape: coefficients){
+        for(List<IndexedCoefficient> shape: normalized){
             double[] vector = new double[indexes.length];
             for(int i = 0; i<n; i++){
-                int[] group = groups[i];
-                for(int l = 0; l<group.length; l++){
-                    vector[i] += shape.get(group[l]).getCoefficient();
-                }
+                vector[i] += shape.get(indexes[i]).getCoefficient();
             }
 
             Double min = Double.MAX_VALUE;
@@ -319,8 +340,8 @@ public class CoefficientKmeansND {
             partitionedShapes.add(new ArrayList<>());
         }
 
-        for(List<IndexedCoefficient> shape: coefficients){
-
+        for(int shapeIndex = 0; shapeIndex<normalized.size(); shapeIndex++){
+            List<IndexedCoefficient> shape = normalized.get(shapeIndex);
             Double min = Double.MAX_VALUE;
 
             int dex = 0;
@@ -338,7 +359,7 @@ public class CoefficientKmeansND {
 
             }
 
-            partitionedShapes.get(dex).add(shape);
+            partitionedShapes.get(dex).add(original.get(shapeIndex));
 
         }
         for(int j = 0; j<ks; j++){
@@ -595,7 +616,9 @@ public class CoefficientKmeansND {
 
     public static void loadDataAndRun(String[] args) throws IOException {
         List<List<IndexedCoefficient>> coefficients = IndexedCoefficient.readCoefficients(Paths.get(args[0]));
+
         CoefficientKmeansND kmeans = new CoefficientKmeansND();
+        kmeans.normalizeCoefficients(coefficients);
         kmeans.setInput(coefficients);
 
         if(args.length>=2) {
@@ -613,34 +636,34 @@ public class CoefficientKmeansND {
         }
 
 
-        int total= 3;
-        int n = 16;
-        int count = total;
-        int alt = total;
-        int top = coefficients.get(0).size() - 1;
-        double[] x = new double[n];
-        double[] y = new double[n];
-        for(int i = 0; i<n; i++){
-            int prime = 9 + count;
-            int aux =  9 + alt;
-            int[][] indexes = {
-                    {aux},
-                    {prime}
+        int vectors = 1;
+        int ks = 8;
+        Graph variancePlot = new Graph();
 
+        for(int i = 0; i<vectors; i++){
+            int prime = 66;
+            int aux =  171;
+            int[] indexes = {
+                    995,
+                    988,
+                    636
             };
-            alt--;
-            if(alt<0){
-                count--;
-                alt = total;
-            }
-            kmeans.ks = 3;
-            //241 & 240 ntc separates.
-            double s = kmeans.plot(indexes);
-            x[i] = kmeans.ks;
-            y[i] = s;
-        }
 
-        new Graph(x, y).show(true, "variance");
+            double[] x = new double[ks];
+            double[] y = new double[ks];
+
+            for(int j = 0; j<ks; j++) {
+                kmeans.ks = 1 + j;
+                //241 & 240 ntc separates.
+                double s = kmeans.plot(indexes);
+                x[j] = kmeans.ks;
+                y[j] = s;
+            }
+            DataSet set = variancePlot.addData(x, y);
+            set.setLabel(Arrays.toString(indexes));
+        }
+        variancePlot.show(true, "variance");
+
     }
 
     public static void testVersion(){
@@ -692,7 +715,7 @@ public class CoefficientKmeansND {
         try {
             for(int i = 1; i<=5; i++){
                 kmeans.ks = i;
-                double sigma = kmeans.plot(new int[][]{{0}, {1}, {2}});
+                double sigma = kmeans.plot(new int[]{0, 1, 2});
                 x[i-1] = i;
                 y[i-1] = sigma;
             }
