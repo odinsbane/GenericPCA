@@ -25,7 +25,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * Created by msmith on 19.10.17.
  */
 public class ScanKmeans {
-    static final int MAXRESULTS = 25;
+    static final int MAXRESULTS = 50;
     PriorityQueue<Result> results = new PriorityQueue<>(MAXRESULTS + 1);
     List<Condition> conditions = new ArrayList<>();
     int counted = 0;

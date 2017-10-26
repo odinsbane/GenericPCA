@@ -35,7 +35,7 @@ public class CoefficientKmeansND {
     List<Path> labels;
     List<double[]> eigenVectors;
     List<Highlight> highlights;
-
+    static boolean unscaled = true;
     public void setInput(List<List<IndexedCoefficient>> input){
         List<List<IndexedCoefficient>> replacement = new ArrayList<>(input.size());
         for(List<IndexedCoefficient> shape: input){
@@ -121,20 +121,27 @@ public class CoefficientKmeansND {
         for(int index = 0; index< cnets; index++){
             double min = Double.MAX_VALUE;
             double max = -Double.MAX_VALUE;
+            double sum = 0;
+            double sum2 = 0;
             for(List<IndexedCoefficient> shape: co){
 
                 double v = shape.get(index).getCoefficient();
+                sum += v;
+                sum2 += v*v;
                 min = v<min?v:min;
                 max = v>max?v:max;
 
             }
-
+            sum = sum/co.size();
+            sum2 = Math.sqrt(sum2/co.size() - sum*sum);
+            min = sum - sum2;
+            max = sum + sum2;
             for(int i = 0; i<co.size(); i++){
                 List<IndexedCoefficient> shape = co.get(i);
                 List<IndexedCoefficient> nShape = normed.get(i);
                 IndexedCoefficient ic = shape.get(index);
                 double v = ic.getCoefficient();
-                double scaled = 2*(v - min)/(max - min);
+                double scaled = 2*(v - min)/(max - min) - 1;
                 nShape.add(new IndexedCoefficient(ic.i, scaled));
             }
 
@@ -238,7 +245,8 @@ public class CoefficientKmeansND {
             ymax = ymax>yrange[1]?ymax:yrange[1];
 
             set.setLine(null);
-            set.setPoints(gp.get(count%9 + 3));
+            //set.setPoints(gp.get(count%9 + 3));
+            set.setPoints(GraphPoints.filledCircles());
             set.setLabel(String.format("k: %d", count));
             count++;
 
@@ -250,8 +258,12 @@ public class CoefficientKmeansND {
             Color[] colors = {
                     Color.BLUE,
                     Color.RED,
-                    Color.ORANGE,
                     Color.DARK_GRAY
+            };
+            GraphPoints[] points = {
+                    GraphPoints.hollowSquares(),
+                    GraphPoints.hollowCircles(),
+                    GraphPoints.hollowTriangles()
             };
             int counter = 0;
             for(Highlight high: highlights){
@@ -269,10 +281,11 @@ public class CoefficientKmeansND {
                 }
                 DataSet set = graph.addData(x, y);
                 set.setLine(null);
-                set.setPoints(GraphPoints.crossX());
-                set.setColor(colors[counter]);
+                set.setPoints(points[counter%points.length]);
+                set.setColor(colors[(counter/colors.length)%colors.length]);
                 set.setPointWeight(2.0);
-                counter = (counter+1)%colors.length;
+                set.setPointSize(8.0);
+                counter++;
                 set.setLabel(high.label);
             }
         }
@@ -579,6 +592,7 @@ public class CoefficientKmeansND {
         }
     }
     static public double[] getAxisExtremes(double[] data){
+        if(unscaled) return new double[] {-3, 3};
         double sum = 0;
         double sum2 = 0;
         double min = Double.MAX_VALUE;
@@ -636,24 +650,28 @@ public class CoefficientKmeansND {
         }
 
 
-        int vectors = 1;
-        int ks = 8;
+        int ks = 1;
         Graph variancePlot = new Graph();
+        int[][] indexGroups = new int[][]{
+                {1023, 1022},
+                {1021, 1020},
+                {1019, 1018},
+                {1017, 1016},
+                {1015, 1014},
+                {1013, 1012}
+        };
+        int vectors = indexGroups.length;
 
         for(int i = 0; i<vectors; i++){
             int prime = 66;
             int aux =  171;
-            int[] indexes = {
-                    995,
-                    988,
-                    636
-            };
+            int[] indexes = indexGroups[i];
 
             double[] x = new double[ks];
             double[] y = new double[ks];
 
             for(int j = 0; j<ks; j++) {
-                kmeans.ks = 1 + j;
+                kmeans.ks = 6 + j*3;
                 //241 & 240 ntc separates.
                 double s = kmeans.plot(indexes);
                 x[j] = kmeans.ks;
