@@ -247,6 +247,9 @@ public class CoefficientKmeansND {
             set.setLine(null);
             //set.setPoints(gp.get(count%9 + 3));
             set.setPoints(GraphPoints.filledCircles());
+            Color c = set.COLOR;
+            c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 050);
+            set.setColor(c);
             set.setLabel(String.format("k: %d", count));
             count++;
 
