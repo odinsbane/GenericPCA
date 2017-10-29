@@ -164,7 +164,7 @@ public class ScanKmeans {
     class Worker implements Runnable{
         BlockingQueue<Condition> queue = new LinkedBlockingQueue<>(1);
         CoefficientKmeansND kmeans;
-
+        int attempts = 5;
         public Worker(List<List<IndexedCoefficient>> coefficients){
             kmeans = new CoefficientKmeansND();
             kmeans.setInput(coefficients);
@@ -182,7 +182,11 @@ public class ScanKmeans {
                 try {
                     Condition condition = queue.take();
                     kmeans.ks = condition.k;
-                    double s = kmeans.calculate(condition.indexes);
+                    double s = Double.MAX_VALUE;
+                    for(int i = 0; i<attempts; i++){
+                        double s2 = kmeans.calculate(condition.indexes);
+                        s = s2<s?s2:s;
+                    }
                     Result result = new Result(condition.indexes, s, condition.k);
                     postResult(this, result);
                 } catch (InterruptedException e) {

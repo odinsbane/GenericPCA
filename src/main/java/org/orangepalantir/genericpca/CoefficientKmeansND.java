@@ -656,12 +656,9 @@ public class CoefficientKmeansND {
         int ks = 1;
         Graph variancePlot = new Graph();
         int[][] indexGroups = new int[][]{
-                {1023, 1022},
-                {1021, 1020},
-                {1019, 1018},
-                {1017, 1016},
-                {1015, 1014},
-                {1013, 1012}
+                {1019, 1021, 1022},
+                {1020, 1021, 1022},
+                {996, 623, 624}
         };
         int vectors = indexGroups.length;
 
@@ -674,7 +671,7 @@ public class CoefficientKmeansND {
             double[] y = new double[ks];
 
             for(int j = 0; j<ks; j++) {
-                kmeans.ks = 6 + j*3;
+                kmeans.ks = 3 + j*3;
                 //241 & 240 ntc separates.
                 double s = kmeans.plot(indexes);
                 x[j] = kmeans.ks;
