@@ -43,7 +43,7 @@ public class ScanKmeans {
         int alt = total - 1;
         int small = alt - 1;
         int top = coefficients.get(0).size() - 1;
-
+        top = 512;
         int n = 1;
 
 

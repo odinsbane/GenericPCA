@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
  */
 public class DisplayInverseFFT {
     int length;
-
     public void displayData(List<double[]> vectors){
         length = (int)Math.sqrt(vectors.get(0).length);
         ImageStack original = new ImageStack(length, length);

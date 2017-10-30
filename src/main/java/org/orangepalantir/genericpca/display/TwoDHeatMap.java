@@ -199,7 +199,7 @@ public class TwoDHeatMap {
 
     public static void main(String[] args){
 
-        TwoDHeatMap map = new TwoDHeatMap(16, 16);
+        TwoDHeatMap map = new TwoDHeatMap(32, 64);
         FileDialog log = new FileDialog((JFrame)null, "Choose vector data");
         log.setMode(FileDialog.LOAD);
         log.setVisible(true);
