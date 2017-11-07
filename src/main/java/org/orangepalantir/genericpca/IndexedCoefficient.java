@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Created by msmith on 01.08.17.
  */
-class IndexedCoefficient{
+public class IndexedCoefficient{
     final int i;
     final double m;
     public IndexedCoefficient(int index,double coefficient){
