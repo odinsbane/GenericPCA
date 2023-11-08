@@ -3,10 +3,7 @@ package org.orangepalantir.genericpca;
 import Jama.EigenvalueDecomposition;
 import Jama.Matrix;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Generic method for taking a collection of vectors (double[]) and finding the principle components.
@@ -31,9 +28,13 @@ public class Trainer {
         calculateAverage();
         List<double[]> deltas = calculateDeviation();
         double[][] cov = getCovarianceMatrix(deltas);
-        eigens = new Matrix(cov).eig();
-        double[][] rawEigenVectors = eigens.getV().getArray();
 
+        System.out.println("solving " + cov.length + " x "+ cov[0].length);
+        eigens = new Matrix(cov).eig();
+
+        System.out.println("solved");
+        double[][] rawEigenVectors = eigens.getV().getArray();
+        System.out.println("copying");
         for(int v = 0; v<N; v++){
             double[] vector = new double[N];
             double sum = 0;
@@ -101,7 +102,7 @@ public class Trainer {
 
 
 
-    List<IndexedCoefficient> getCoefficients(double[] vector){
+    public List<IndexedCoefficient> getCoefficients(double[] vector){
         List<IndexedCoefficient> coefficients = new ArrayList<>(N);
         double[] delta = calculatDelta(vector);
         for(int i = 0; i<eigenVectors.size(); i++){
@@ -123,6 +124,13 @@ public class Trainer {
         return eigenVectors.get(index);
     }
 
+    public double[] getAverage(){
+        return average;
+    }
+
+    public List<double[]> getFeaturePoints(){
+        return new ArrayList<>(featurePoints);
+    }
 
     /**
      * Sums two vectors. places the result in target.

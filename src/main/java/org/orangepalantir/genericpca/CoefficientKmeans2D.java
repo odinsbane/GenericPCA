@@ -3,6 +3,7 @@ package org.orangepalantir.genericpca;
 import lightgraph.DataSet;
 import lightgraph.Graph;
 import lightgraph.GraphPoints;
+import livingai.FeatureGroup;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
@@ -25,11 +26,18 @@ import java.util.stream.Collectors;
  * Created by msmith on 04.10.17.
  */
 public class CoefficientKmeans2D {
+    List<List<double[]>> partitions;
+    List<List<Integer>> indexPartitions;
     List<List<IndexedCoefficient>> coefficients;
     int ks = 4;
     int levels = 100;
     List<Path> labels;
+    public CoefficientKmeans2D(){
 
+    }
+    public CoefficientKmeans2D(int ks){
+        this.ks = ks;
+    }
     public void setInput(List<List<IndexedCoefficient>> input){
         List<List<IndexedCoefficient>> replacement = new ArrayList<>(input.size());
         for(List<IndexedCoefficient> shape: input){
@@ -67,11 +75,14 @@ public class CoefficientKmeans2D {
             if(delta/diff < 1e-8) break;
         }
 
-        List<List<double[]>> partitions = new ArrayList<>();
+        partitions = new ArrayList<>();
+        indexPartitions = new ArrayList<>();
+
         List<Map<Path, AtomicInteger>> partyLabels = new ArrayList<>();
 
         for(int n = 0; n<ks; n++){
             partitions.add(new ArrayList<>());
+            indexPartitions.add(new ArrayList<>());
             if(labels!=null){
                 partyLabels.add(new HashMap<>());
             }
@@ -81,7 +92,7 @@ public class CoefficientKmeans2D {
 
             double vx = shape.get(i).getCoefficient();
             double vy = shape.get(j).getCoefficient();
-            Double min = Double.MAX_VALUE;
+            double min = Double.MAX_VALUE;
             int dex = 0;
             for(int s = 0; s<ks; s++){
                 double mx = means[2*s];
@@ -97,6 +108,7 @@ public class CoefficientKmeans2D {
             }
 
             partitions.get(dex).add(new double[]{vx, vy});
+            indexPartitions.get(dex).add(coefficientIndex);
             if(labels!=null){
                 partyLabels.get(dex).computeIfAbsent(labels.get(coefficientIndex).getParent(), a->new AtomicInteger(0)).getAndIncrement();
             }
@@ -141,6 +153,7 @@ public class CoefficientKmeans2D {
         double maxx = -minx;
         double maxy = -miny;
         int k  = 0;
+
         for(List<IndexedCoefficient> shape: coefficients){
             double vx = shape.get(i).getCoefficient();
             double vy = shape.get(j).getCoefficient();
@@ -159,12 +172,11 @@ public class CoefficientKmeans2D {
         double[] initial = new double[ks*2];
         for(k = 0; k<ks; k++){
             double sin = Math.sin(dtheta*k + theta0);
-            double cos = Math.sin(dtheta*k + theta0);
+            double cos = Math.cos(dtheta*k + theta0);
             initial[k*2] = minx + deltax*sin;
             initial[k*2+1] = miny + deltay*cos;
 
         }
-
 
         return initial;
     }
@@ -255,8 +267,9 @@ public class CoefficientKmeans2D {
 
 
     public void setLabels(List<String> labels){
-        this.labels = labels.stream().map(Paths::get).collect(Collectors.toList());
 
+        this.labels = labels.stream().map(Paths::get).collect(Collectors.toList());
+        System.out.println(this.labels.size());
     }
 
     public static void main(String[] args) throws IOException {
@@ -275,5 +288,10 @@ public class CoefficientKmeans2D {
         }
 
 
+    }
+
+    public List<List<Integer>> getIndexPartitions() {
+
+        return indexPartitions;
     }
 }
